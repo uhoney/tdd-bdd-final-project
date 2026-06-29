@@ -28,7 +28,7 @@ import logging
 import unittest
 from nose.tools import assert_raises
 from decimal import Decimal
-from service.models import Product, Category, db
+from service.models import Product, Category, db, DataValidationError
 from service import app
 from tests.factories import ProductFactory
 
@@ -209,4 +209,19 @@ class TestProductModel(unittest.TestCase):
         for product in found:
             self.assertEqual(product.price, price)
         stupid_test = Product.find_by_price("0")
-        
+
+    def test_deserialize_to_dict(self):
+        """It should deserialize from dict"""
+        stupid_product = {
+            "name": "banana",
+            "description": "fruit",
+            "price": 1,
+            "available": True,
+            "category": "INVALID"
+            }
+
+        product = ProductFactory()
+        product.create()
+
+        with self.assertRaises(DataValidationError):
+            product.deserialize(stupid_product)
