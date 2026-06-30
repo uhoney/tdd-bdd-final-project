@@ -26,7 +26,6 @@ While debugging just these tests it's convenient to use this:
 import os
 import logging
 import unittest
-from nose.tools import assert_raises
 from decimal import Decimal
 from service.models import Product, Category, db, DataValidationError
 from service import app
@@ -134,11 +133,15 @@ class TestProductModel(unittest.TestCase):
         self.assertEqual(products[0].description, "testing")
         # Test stupid update
         product.id = None
-        try:
+        # try:
+        #     product.update()
+        #     # self.assertTrue(False)
+        # except DataValidationError:
+        #     self.assertTrue(True)
+        with self.assertRaises(DataValidationError) as stupid_error:
             product.update()
-            self.assertTrue(false)
-        except:
-            self.assertTrue(True)
+
+        self.assertIn("Update called with empty ID field", str(stupid_error.exception))
 
     def test_delete_a_product(self):
         """It should Delete a Product"""
@@ -208,9 +211,10 @@ class TestProductModel(unittest.TestCase):
         self.assertEqual(found.count(), count)
         for product in found:
             self.assertEqual(product.price, price)
-        stupid_test = Product.find_by_price("0")
+        # stupid_test = Product.find_by_price("0")
+        Product.find_by_price("0")
 
-    def test_deserialize_to_dict(self):
+    def test_deserialize_attribute(self):
         """It should deserialize from dict"""
         stupid_product = {
             "name": "banana",
@@ -225,3 +229,36 @@ class TestProductModel(unittest.TestCase):
 
         with self.assertRaises(DataValidationError):
             product.deserialize(stupid_product)
+
+    def test_deserialize_key(self):
+        """It should test keyerror"""
+        product = ProductFactory()
+        product.create()
+
+        with self.assertRaises(DataValidationError) as stupid_error:
+            stupid_product = {
+                "description": "fruit",
+                "price": "1.1",
+                "available": True,
+                "category": "FOOD"
+            }
+            product.deserialize(stupid_product)
+
+        self.assertIn("missing name", str(stupid_error.exception))
+
+    def test_deserialize_boolean(self):
+        """it should test boolean"""
+        product = ProductFactory()
+        product.create()
+
+        with self.assertRaises(DataValidationError) as stupid_error:
+            stupid_product = {
+                "name": "banana",
+                "description": "fruit",
+                "price": "1.1",
+                "available": "yep",
+                "category": "FOOD"
+            }
+            product.deserialize(stupid_product)
+
+        self.assertIn("Invalid type for boolean [available]: <class 'str'>", str(stupid_error.exception))
